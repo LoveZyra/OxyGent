@@ -86,8 +86,6 @@ class Oxy(BaseModel, ABC):
 
     is_entrance: bool = Field(False, description="Whether this is a MAS entry point")
 
-    is_entrance: bool = Field(False, description="Whether is the entrance of MAS")
-
     is_permission_required: bool = Field(False, description="Whether needs permission")
     is_save_data: bool = Field(True, description="Whether to save data")
     permitted_tool_name_list: list = Field(
