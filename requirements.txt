@@ -25,3 +25,9 @@ aioresponses==0.7.8
 pytesseract==0.3.13
 pytest==8.4.2
 pytest-asyncio==1.2.0
+
+# Document processing tools (optional but recommended)
+PyMuPDF>=1.23.0  # PDF text/image extraction
+pdfplumber>=0.10.0  # PDF table extraction
+python-docx>=1.1.0  # Word document processing
+openpyxl>=3.1.0  # Excel file processing
