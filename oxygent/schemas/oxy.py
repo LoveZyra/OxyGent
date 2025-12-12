@@ -96,6 +96,7 @@ class OxyRequest(BaseModel):
     node_id: Optional[str] = Field("", description="")
 
     is_save_history: bool = Field(True, description="whether history is saved")
+    is_send_message: bool = Field(True, description="whether message is send")
     is_async_storage: bool = Field(True, description="whether async storage is used")
 
     parallel_id: Optional[str] = Field("", description="")
@@ -354,7 +355,7 @@ class OxyRequest(BaseModel):
         return await self.get_oxy(self.callee).execute(self)
 
     async def send_message(self, message=None, event=None, id=None):
-        if self.mas:
+        if self.mas and self.is_send_message:
             args = {"id": id, "event": event, "data": message}
             filtered_args = {k: v for k, v in args.items() if v is not None}
             sse_message = SSEMessage(**filtered_args)

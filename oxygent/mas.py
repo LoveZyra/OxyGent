@@ -755,6 +755,8 @@ class MAS(BaseModel):
                     )
 
             oxy_request = OxyRequest(mas=self)
+            if not send_msg_key:
+                oxy_request.is_send_message = False
             oxy_request.group_data = group_data
             if "current_trace_id" in payload and payload["current_trace_id"]:
                 oxy_request.current_trace_id = payload["current_trace_id"]
