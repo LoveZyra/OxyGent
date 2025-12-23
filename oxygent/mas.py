@@ -941,10 +941,10 @@ class MAS(BaseModel):
                     message = sse_message_dict.get("data", {})
                     if isinstance(message, dict):
                         if message.get("type", "") == "tool_call" and isinstance(
-                                message.get("content", {})
-                                        .get("arguments", {})
-                                        .get("query", ""),
-                                list,
+                            message.get("content", {})
+                            .get("arguments", {})
+                            .get("query", ""),
+                            list,
                         ):
                             for msg in message["content"]["arguments"]["query"]:
                                 if msg.get("type") == "text":
@@ -1177,24 +1177,22 @@ class MAS(BaseModel):
             self.active_tasks[current_trace_id] = task
             return WebResponse().to_dict()
 
-        @app.api_route("/async/sse/trace", methods=["GET", "POST"])
-        async def async_sse_trace(request: Request):
+        @app.api_route("/async/trace", methods=["GET", "POST"])
+        async def async_trace(request: Request):
             payload = await request_to_payload(request)
             # Apply request interceptor if configured
             intercepted_response = self.func_interceptor(payload)
             if intercepted_response is not None:
                 return intercepted_response
-            current_trace_id = payload["trace_id"]
+            trace_id = payload["trace_id"]
             timestamp = payload["timestamp"]
 
             logger.info(
                 "SSE connection established.",
-                extra={"trace_id": current_trace_id, "timestamp": timestamp},
+                extra={"trace_id": trace_id, "timestamp": timestamp},
             )
-            redis_key = f"{self.message_prefix}:{self.name}:{current_trace_id}"
-            return EventSourceResponse(
-                self.yield_async_message(redis_key, current_trace_id)
-            )
+            redis_key = f"{self.message_prefix}:{self.name}:{trace_id}"
+            return EventSourceResponse(self.yield_async_message(redis_key, trace_id))
 
         @app.api_route("/feedback", methods=["GET", "POST"])
         async def feedback(request: Request):
