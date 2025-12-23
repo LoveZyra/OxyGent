@@ -24,7 +24,6 @@ function initDOMCache() {
     dom.editForm = document.getElementById('edit-form');
     dom.editKey = document.getElementById('edit_prompt_key');
     dom.editContent = document.getElementById('edit_prompt_content');
-    dom.editIsActive = document.getElementById('edit_is_active');
     dom.versionList = document.getElementById('version-list');
     dom.previewContent = document.getElementById('preview-content');
     dom.previewVersionInfo = document.getElementById('preview-version-info');
@@ -213,10 +212,6 @@ function createPromptCard(prompt) {
     card.className = 'prompt-card';
     card.dataset.promptKey = prompt.prompt_key;
 
-    const statusBadge = prompt.is_active ?
-        '<span class="badge badge-active">Active</span>' :
-        '<span class="badge badge-inactive">Inactive</span>';
-
     const truncatedContent = prompt.prompt_content.length > 200
         ? prompt.prompt_content.substring(0, 200) + '...'
         : prompt.prompt_content;
@@ -226,7 +221,6 @@ function createPromptCard(prompt) {
             <h3 class="prompt-title">${escapeHtml(prompt.prompt_key)}</h3>
             <div class="prompt-meta">
                 <span class="badge badge-agent">${escapeHtml(prompt.agent_type || 'General')}</span>
-                ${statusBadge}
                 <span class="badge badge-version">v${prompt.version || 1}</span>
             </div>
         </div>
@@ -281,7 +275,6 @@ async function editPrompt(promptKey) {
             state.currentPrompt = result.data;
             dom.editKey.value = state.currentPrompt.prompt_key;
             dom.editContent.value = state.currentPrompt.prompt_content;
-            dom.editIsActive.checked = state.currentPrompt.is_active || false;
             showEditModal();
 
             // Focus with better UX
@@ -303,7 +296,6 @@ async function editPrompt(promptKey) {
 async function savePrompt() {
     const promptKey = dom.editKey.value.trim();
     const promptContent = dom.editContent.value.trim();
-    const isActive = dom.editIsActive.checked;
 
     if (!promptKey || !promptContent) {
         showNotification('Please fill in all required fields.', 'error');
@@ -317,7 +309,6 @@ async function savePrompt() {
             prompt_key: promptKey,
             prompt_content: promptContent,
             agent_type: state.currentPrompt.agent_type,
-            is_active: isActive,
             version: (state.currentPrompt.version || 1) + 1,
             description: state.currentPrompt.description,
             category: state.currentPrompt.category || 'agent'
@@ -418,7 +409,9 @@ function renderVersionHistory(versions, promptKey) {
         const item = document.createElement('div');
         item.className = `version-item${version.is_current ? ' current' : ''}`;
 
-        const date = new Date(version.created_at).toLocaleString();
+        // Use archived_at for history versions, updated_at for current version
+        const timeField = version.archived_at || version.updated_at || version.created_at;
+        const date = new Date(timeField).toLocaleString();
         const isCurrent = version.is_current;
 
         item.innerHTML = `

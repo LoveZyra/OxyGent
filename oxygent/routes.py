@@ -420,7 +420,6 @@ class PromptUpdateRequest(BaseModel):
     description: Optional[str] = None
     category: Optional[str] = None
     agent_type: Optional[str] = None
-    is_active: Optional[bool] = None
     tags: Optional[List[str]] = None
 
 
@@ -432,7 +431,6 @@ class PromptResponse(BaseModel):
     category: str
     agent_type: str
     version: int
-    is_active: bool
     created_at: str
     updated_at: str
     created_by: str
@@ -571,11 +569,6 @@ async def update_prompt(prompt_key: str, request: PromptUpdateRequest):
         else:
             update_data["agent_type"] = existing.get("agent_type", "")
 
-        if request.is_active is not None:
-            update_data["is_active"] = request.is_active
-        else:
-            update_data["is_active"] = existing.get("is_active", True)
-
         if request.tags is not None:
             update_data["tags"] = request.tags
         else:
@@ -594,6 +587,16 @@ async def update_prompt(prompt_key: str, request: PromptUpdateRequest):
         # Auto-trigger hot reload if content changed
         hot_reload_success = False
         if request.prompt_content is not None:
+            # Note: save_prompt already updated the cache with new content
+            # No need to delete it, hot_reload will handle cache refresh
+            
+            # Debug: Log agent mapping (only in debug mode)
+            if logger.isEnabledFor(logging.DEBUG):
+                from .live_prompt import dynamic_agent_manager
+                agent_mapping = dynamic_agent_manager.get_agent_prompt_mapping()
+                logger.debug(f"Current agent_prompt_mapping: {agent_mapping}")
+                logger.debug(f"Attempting to hot reload prompt: {prompt_key}")
+            
             hot_reload_success = await hot_reload_prompt(prompt_key)
 
         return PromptApiResponse(

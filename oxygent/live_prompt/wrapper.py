@@ -39,9 +39,9 @@ class DynamicAgentManager:
                     prompt_key = f"{agent_name}_prompt"
                     self.agent_prompt_mapping[agent_name] = prompt_key
                     live_prompt_agents.append(agent_name)
-                    logger.info(f"✅ Registered live prompt agent: {agent_name}")
+                    logger.info(f"Registered live prompt agent: {agent_name}")
                 else:
-                    logger.debug(f"⏭️ Skipping agent without live prompts: {agent_name}")
+                    logger.debug(f"Skipping agent without live prompts: {agent_name}")
 
             logger.info(f"Live prompt registration completed: {len(live_prompt_agents)} agents registered")
             logger.info(f"Live prompt agents: {live_prompt_agents}")
@@ -68,37 +68,37 @@ class DynamicAgentManager:
 
             prompt = getattr(agent_instance, 'prompt', '')
 
-            # If prompt is empty or very short, it likely doesn't use live prompts
-            if not prompt or len(prompt.strip()) < 10:
+            # Note: Empty prompt is allowed - it means the agent uses live prompts
+            # but the prompt hasn't been set in ES yet (will use system default)
+            # We only check if the attribute exists, not its content
+            
+            # If prompt is None (not set at all), skip this agent
+            if prompt is None:
                 return False
 
             # Check if the prompt looks like it came from get_live_prompts
-            # Live prompts typically have meaningful content and are not generic defaults
-            prompt_lower = prompt.lower().strip()
+            # Even empty string is valid if explicitly set via get_live_prompts
+            prompt_lower = str(prompt).lower().strip() if prompt else ""
 
-            # Skip generic/default prompts that don't use live prompt system
-            generic_patterns = [
-                'default prompt for',
-                'you are a',
-                'this is a default',
-                'generic prompt',
-                'placeholder'
-            ]
+            # Skip agents with very generic default prompts that clearly don't use live prompt system
+            if len(prompt_lower) > 10:  # Only check pattern if prompt has content
+                generic_patterns = [
+                    'default prompt for',
+                    'you are a',
+                    'this is a default',
+                    'generic prompt',
+                    'placeholder'
+                ]
 
-            # If it matches generic patterns, it's probably not a live prompt
-            if any(pattern in prompt_lower for pattern in generic_patterns):
-                # But allow it if it's longer and more detailed (likely customized)
-                if len(prompt) < 50:
-                    return False
+                # If it matches generic patterns and is short, it's probably not a live prompt
+                if any(pattern in prompt_lower for pattern in generic_patterns):
+                    if len(prompt) < 50:
+                        return False
 
-            # Additional check: Look for agents that have meaningful, non-generic prompts
-            # This suggests they were configured with get_live_prompts
-            if len(prompt) > 20 and any(word in prompt_lower for word in [
-                'assistant', 'help', 'user', 'query', 'task', 'system', 'manage', 'operate'
-            ]):
-                return True
-
-            return False
+            # Accept the agent if:
+            # 1. It has a prompt attribute (even if empty - means using live prompts)
+            # 2. Or it has meaningful, non-generic content
+            return True
 
         except Exception as e:
             logger.warning(f"Error checking if agent uses live prompts: {e}")
@@ -120,14 +120,20 @@ class DynamicAgentManager:
 
         try:
             from .hot_prompts import _resolve_prompt_from_es
+            from .manager import get_prompt_manager
 
             prompt_key = self.agent_prompt_mapping[agent_name]
             agent_instance = self.mas_instance.oxy_name_to_oxy[agent_name]
 
+            # Clear PromptManager cache to force reload from ES
+            manager = await get_prompt_manager()
+            manager.clear_cache(prompt_key)
+            logger.debug(f"Cleared PromptManager cache for: {prompt_key}")
+
             # Get original prompt as fallback
             original_prompt = getattr(agent_instance, 'prompt', '')
 
-            # Get latest prompt from ES
+            # Get latest prompt from ES (bypass cache)
             new_prompt = await _resolve_prompt_from_es(prompt_key, original_prompt)
 
             # Update agent prompt
@@ -144,8 +150,14 @@ class DynamicAgentManager:
                 logger.warning(f"Agent has no prompt attribute: {agent_name}")
                 return False
 
+        except ConnectionError as e:
+            logger.error(f"Connection error updating prompt for {agent_name}: {e}")
+            logger.info(f"Will retry on next hot reload request")
+            return False
         except Exception as e:
             logger.error(f"Failed to update prompt for {agent_name}: {e}")
+            import traceback
+            logger.debug(traceback.format_exc())
             return False
 
     async def update_all_prompts(self) -> Dict[str, bool]:
@@ -308,6 +320,12 @@ async def hot_reload_prompt(prompt_key: str) -> bool:
     Returns:
         bool: Whether any agent was successfully updated
     """
+    from .manager import get_prompt_manager
+    
+    # Clear PromptManager cache before hot reload
+    manager = await get_prompt_manager()
+    manager.clear_cache(prompt_key)
+    
     results = await dynamic_agent_manager.update_prompt_by_key(prompt_key)
     return any(results.values()) if results else False
 
@@ -319,6 +337,12 @@ async def hot_reload_all_prompts() -> bool:
     Returns:
         bool: Whether at least one agent was successfully updated
     """
+    from .manager import get_prompt_manager
+    
+    # Clear all PromptManager cache before hot reload
+    manager = await get_prompt_manager()
+    manager.clear_cache()
+    
     results = await dynamic_agent_manager.update_all_prompts()
     return any(results.values()) if results else False
 

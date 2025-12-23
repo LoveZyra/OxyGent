@@ -77,8 +77,8 @@ class PromptManager:
             index_name (str): Index name for storing prompts. Defaults to "live_prompts".
         """
         self.index_name = index_name
-        self._prompt_cache = {}  # Memory cache for prompt content
-        self._last_update = {}   # Last update timestamps
+        self._prompt_cache = {}  # Memory cache for full prompt documents
+        self._cache_max_size = 1000  # Maximum cache entries
         self.db_client = None
         self.use_local_es = False
 
@@ -272,9 +272,8 @@ class PromptManager:
                 body=doc
             )
 
-            # Update cache
-            self._prompt_cache[prompt_key] = prompt_content
-            self._last_update[prompt_key] = datetime.now()
+            # Update cache with full document
+            self._prompt_cache[prompt_key] = doc
 
             logger.info(f"Saved prompt: {prompt_key}")
             return True
@@ -283,7 +282,7 @@ class PromptManager:
             logger.error(f"Failed to save prompt {prompt_key}: {e}")
             return False
 
-    async def get_prompt(self, prompt_key: str) -> Optional[Dict[str, Any]]:
+    async def get_prompt(self, prompt_key: str, use_cache: bool = True) -> Optional[Dict[str, Any]]:
         """Retrieve a prompt by its key.
 
         Fetches prompt data from the database and updates the local cache.
@@ -291,12 +290,18 @@ class PromptManager:
 
         Args:
             prompt_key (str): The unique identifier for the prompt.
+            use_cache (bool): Whether to use cached data. Defaults to True.
 
         Returns:
             Optional[Dict[str, Any]]: The prompt data dict if found, None otherwise.
         """
         try:
-            # Fetch single document from database
+            # Check cache first if enabled
+            if use_cache and prompt_key in self._prompt_cache:
+                logger.debug(f"Using cached prompt for: {prompt_key}")
+                return self._prompt_cache[prompt_key]
+            
+            # Cache miss, fetch from database
             search_body = {
                 "query": {
                     "term": {
@@ -314,9 +319,13 @@ class PromptManager:
             hits = response.get("hits", {}).get("hits", [])
             if hits:
                 source = hits[0]["_source"]
-                # Update cache
-                self._prompt_cache[prompt_key] = source["prompt_content"]
-                self._last_update[prompt_key] = datetime.now()
+                # Update cache with full document
+                self._prompt_cache[prompt_key] = source
+                
+                # Cleanup cache if too large
+                if len(self._prompt_cache) > self._cache_max_size:
+                    self._cleanup_cache()
+                
                 return source
 
             return None
@@ -324,6 +333,30 @@ class PromptManager:
         except Exception as e:
             logger.error(f"Failed to get prompt {prompt_key}: {e}")
             return None
+
+    def _cleanup_cache(self):
+        """Clean up old cache entries when cache is full."""
+        if len(self._prompt_cache) > self._cache_max_size:
+            # Remove 20% of entries (arbitrary removal since we don't track timestamps)
+            remove_count = int(self._cache_max_size * 0.2)
+            keys_to_remove = list(self._prompt_cache.keys())[:remove_count]
+            for key in keys_to_remove:
+                del self._prompt_cache[key]
+            logger.info(f"Cleaned up {remove_count} cache entries")
+
+    def clear_cache(self, prompt_key: str = None):
+        """Clear cache for specific key or all keys.
+        
+        Args:
+            prompt_key: Specific key to clear, None to clear all
+        """
+        if prompt_key:
+            if prompt_key in self._prompt_cache:
+                del self._prompt_cache[prompt_key]
+            logger.debug(f"Cleared cache for: {prompt_key}")
+        else:
+            self._prompt_cache.clear()
+            logger.info("Cleared all prompt cache")
 
     async def get_prompt_content(self, prompt_key: str, fallback_content: str = "") -> str:
         """Get prompt content with fallback support.
@@ -424,6 +457,7 @@ class PromptManager:
         try:
             # Get target version from history
             history_id = f"{prompt_key}_v{target_version}"
+            logger.info(f"Attempting to revert {prompt_key} to version {target_version}")
 
             try:
                 # Use search instead of get method
@@ -447,12 +481,19 @@ class PromptManager:
                     return False
 
                 history_data = hits[0]["_source"]
+                logger.debug(f"Found history version {target_version} for {prompt_key}")
 
             except Exception as e:
                 logger.error(f"Version {target_version} not found for {prompt_key}: {e}")
+                import traceback
+                traceback.print_exc()
                 return False
 
+            # Clear cache before reverting to ensure fresh data
+            self.clear_cache(prompt_key)
+            
             # Create new version using historical data
+            logger.debug(f"Creating new version from history data for {prompt_key}")
             success = await self.save_prompt(
                 prompt_key=prompt_key,
                 prompt_content=history_data["prompt_content"],
@@ -466,11 +507,15 @@ class PromptManager:
 
             if success:
                 logger.info(f"Successfully reverted {prompt_key} to version {target_version}")
+            else:
+                logger.error(f"Failed to save reverted version for {prompt_key}")
 
             return success
 
         except Exception as e:
             logger.error(f"Failed to revert {prompt_key} to version {target_version}: {e}")
+            import traceback
+            traceback.print_exc()
             return False
 
     async def list_prompts(self, category: str = None, agent_type: str = None,
@@ -553,8 +598,6 @@ class PromptManager:
             # Clear cache
             if prompt_key in self._prompt_cache:
                 del self._prompt_cache[prompt_key]
-            if prompt_key in self._last_update:
-                del self._last_update[prompt_key]
 
             logger.info(f"Deleted prompt: {prompt_key}")
             return True
