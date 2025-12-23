@@ -78,7 +78,6 @@ class PromptManager:
         """
         self.index_name = index_name
         self._prompt_cache = {}  # Memory cache for full prompt documents
-        self._cache_max_size = 1000  # Maximum cache entries
         self.db_client = None
         self.use_local_es = False
 
@@ -321,11 +320,6 @@ class PromptManager:
                 source = hits[0]["_source"]
                 # Update cache with full document
                 self._prompt_cache[prompt_key] = source
-                
-                # Cleanup cache if too large
-                if len(self._prompt_cache) > self._cache_max_size:
-                    self._cleanup_cache()
-                
                 return source
 
             return None
@@ -333,16 +327,6 @@ class PromptManager:
         except Exception as e:
             logger.error(f"Failed to get prompt {prompt_key}: {e}")
             return None
-
-    def _cleanup_cache(self):
-        """Clean up old cache entries when cache is full."""
-        if len(self._prompt_cache) > self._cache_max_size:
-            # Remove 20% of entries (arbitrary removal since we don't track timestamps)
-            remove_count = int(self._cache_max_size * 0.2)
-            keys_to_remove = list(self._prompt_cache.keys())[:remove_count]
-            for key in keys_to_remove:
-                del self._prompt_cache[key]
-            logger.info(f"Cleaned up {remove_count} cache entries")
 
     def clear_cache(self, prompt_key: str = None):
         """Clear cache for specific key or all keys.
