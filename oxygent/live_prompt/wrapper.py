@@ -65,39 +65,6 @@ class DynamicAgentManager:
             # Check if agent has a prompt attribute
             if not hasattr(agent_instance, 'prompt'):
                 return False
-
-            prompt = getattr(agent_instance, 'prompt', '')
-
-            # Note: Empty prompt is allowed - it means the agent uses live prompts
-            # but the prompt hasn't been set in ES yet (will use system default)
-            # We only check if the attribute exists, not its content
-            
-            # If prompt is None (not set at all), skip this agent
-            if prompt is None:
-                return False
-
-            # Check if the prompt looks like it came from get_live_prompts
-            # Even empty string is valid if explicitly set via get_live_prompts
-            prompt_lower = str(prompt).lower().strip() if prompt else ""
-
-            # Skip agents with very generic default prompts that clearly don't use live prompt system
-            if len(prompt_lower) > 10:  # Only check pattern if prompt has content
-                generic_patterns = [
-                    'default prompt for',
-                    'you are a',
-                    'this is a default',
-                    'generic prompt',
-                    'placeholder'
-                ]
-
-                # If it matches generic patterns and is short, it's probably not a live prompt
-                if any(pattern in prompt_lower for pattern in generic_patterns):
-                    if len(prompt) < 50:
-                        return False
-
-            # Accept the agent if:
-            # 1. It has a prompt attribute (even if empty - means using live prompts)
-            # 2. Or it has meaningful, non-generic content
             return True
 
         except Exception as e:
