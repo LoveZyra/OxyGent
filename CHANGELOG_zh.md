@@ -9,6 +9,16 @@
 
 ---
 
+## [1.0.10.4] - 2025-12-24
+
+### Added
+- 新增Prompt管理界面，支持在线修改Prompt
+
+### Changed
+- 修改es包，由elasticsearch[async] 改为 elasticsearch
+
+---
+
 ## [1.0.10.3] - 2025-12-23
 
 ### Added
