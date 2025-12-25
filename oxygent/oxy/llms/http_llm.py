@@ -77,24 +77,12 @@ class HttpLLM(RemoteLLM):
                 if k != "messages":
                     payload[k] = v
         else:
-            llm_config = {
-                k: v
-                for k, v in Config.get_llm_config().items()
-                if k
-                not in {
-                    "cls",
-                    "base_url",
-                    "api_key",
-                    "name",
-                    "model_name",
-                }
-            }
             payload = {
                 "messages": await self._get_messages(oxy_request),
                 "model": self.model_name,
                 "stream": True,
             }
-            payload.update(llm_config)
+            payload.update(Config.get_llm_config())
             for k, v in self.llm_params.items():
                 payload[k] = v
             for k, v in oxy_request.arguments.items():

@@ -13,6 +13,7 @@
 
 ### Added
 - 新增Prompt管理界面，支持在线修改Prompt
+- 支持本地大模型 LocalLLM类
 
 ### Changed
 - 修改es包，由elasticsearch[async] 改为 elasticsearch
