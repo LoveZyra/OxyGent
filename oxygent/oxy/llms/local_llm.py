@@ -11,8 +11,8 @@ logger = logging.getLogger(__name__)
 
 class LocalLLM(BaseLLM):
     model_path: str = Field("")
-    device: str = Field("auto")
-    model_name: str = Field("")
+    device_map: str = Field("auto")
+    dtype: str = Field("bfloat16")
 
     async def init(self):
         try:
@@ -27,20 +27,28 @@ class LocalLLM(BaseLLM):
         await super().init()
         # Load model directly
         self._model = AutoModelForCausalLM.from_pretrained(
-            self.model_path, device_map=self.device, torch_dtype=torch.bfloat16
+            self.model_path, device_map=self.device_map, dtype=self.dtype
         )
         self._tokenizer = AutoTokenizer.from_pretrained(self.model_path)
 
     async def _execute(self, oxy_request: OxyRequest) -> OxyResponse:
-        payload = {"model": self.model_name, "stream": False}
-        payload.update(Config.get_llm_config())
+        payload = Config.get_llm_config()
         for k, v in self.llm_params.items():
             payload[k] = v
         for k, v in oxy_request.arguments.items():
             if k == "messages":
                 continue
             payload[k] = v
-        payload = {"max_new_tokens": 512}
+
+        replace_dict = {
+            "max_tokens": "max_new_tokens",
+            "stream": "",
+        }
+        for k, v in replace_dict.items():
+            if k in payload:
+                if v:
+                    payload[v] = payload[k]
+                del payload[k]
 
         messages = oxy_request.arguments["messages"]
 
