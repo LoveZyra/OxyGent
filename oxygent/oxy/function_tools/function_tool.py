@@ -60,7 +60,7 @@ class FunctionTool(BaseTool):
 
         for name, param in sig.parameters.items():
             param_type = param.annotation
-            
+
             # Get type name, handling empty annotations
             if param_type is Parameter.empty:
                 type_name = None
@@ -70,7 +70,7 @@ class FunctionTool(BaseTool):
                 if type_name == "OxyRequest":
                     self.needs_oxy_request = True
                     continue
-            
+
             # Determine parameter properties based on default value
             if isinstance(param.default, FieldInfo):
                 # Pydantic Field: extract description and required status from FieldInfo
@@ -84,7 +84,7 @@ class FunctionTool(BaseTool):
                 # Has regular default value: parameter is optional
                 description = ""
                 is_required = False
-            
+
             # Add parameter to schema
             schema["properties"][name] = {"description": description, "type": type_name}
             if is_required:
@@ -100,7 +100,7 @@ class FunctionTool(BaseTool):
 
             for param_name, param in sig.parameters.items():
                 param_type = param.annotation
-                
+
                 # Get type name, handling empty annotations
                 if param_type is Parameter.empty:
                     type_name = None
@@ -118,7 +118,9 @@ class FunctionTool(BaseTool):
                     # Handle missing arguments - use parameter default if available
                     if isinstance(param.default, FieldInfo):
                         func_kwargs[param_name] = (
-                            param.default.default if param.default.default is not PydanticUndefined else None
+                            param.default.default
+                            if param.default.default is not PydanticUndefined
+                            else None
                         )
                     elif param.default is not Parameter.empty:
                         func_kwargs[param_name] = param.default
@@ -130,6 +132,7 @@ class FunctionTool(BaseTool):
             return OxyResponse(state=OxyState.COMPLETED, output=result)
         except Exception as e:
             import traceback
+
             error_msg = traceback.format_exc()
             logger.error(f"Error in function tool {self.name}: {error_msg}")
             return OxyResponse(state=OxyState.FAILED, output=str(e))

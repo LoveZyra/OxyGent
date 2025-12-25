@@ -16,6 +16,8 @@ from pydantic import Field
 
 from ...config import Config
 from ...schemas import Memory, Message, OxyRequest, OxyResponse
+from ..bank_tools.bank_client import BankClient
+from ..bank_tools.bank_tool import BankTool
 from ..base_tool import BaseTool
 from ..function_tools.function_hub import FunctionHub
 from ..function_tools.function_tool import FunctionTool
@@ -72,6 +74,7 @@ class LocalAgent(BaseAgent):
         default="", description="The prompt add by user, addit to the origin prompt."
     )
     _resolved_prompt: Optional[str] = None
+    tools_placeholder: str = Field("tools_description")
     sub_agents: Optional[list] = Field(
         default_factory=list,
         description="Names of other agents this agent can delegate to (hierarchy support).",
@@ -81,6 +84,10 @@ class LocalAgent(BaseAgent):
     )
     except_tools: Optional[list] = Field(
         default_factory=list, description="Tools explicitly forbidden to this agent."
+    )
+
+    banks: Optional[list] = Field(
+        default_factory=list, description="Banks available to this agent."
     )
 
     is_sourcing_tools: bool = Field(
@@ -158,6 +165,17 @@ class LocalAgent(BaseAgent):
                     self.add_permitted_tool(tool_name)
             else:
                 logger.warning(f"Unknown tool type: {type(oxy)}")
+        for oxy_name in set(self.banks):
+            if oxy_name not in self.mas.oxy_name_to_oxy:
+                raise Exception(f"bank [{oxy_name}] not exists.")
+            oxy = self.mas.oxy_name_to_oxy[oxy_name]
+            if isinstance(oxy, BankTool):
+                self.add_permitted_tool(oxy_name)
+            elif isinstance(oxy, BankClient):
+                for tool_name in oxy.included_bank_name_list:
+                    self.add_permitted_tool(tool_name)
+            else:
+                logger.warning(f"Unknown bank type: {type(oxy)}")
 
     def __deepcopy__(self, memo):
         # Extract all fields from the current instance
@@ -462,7 +480,7 @@ class LocalAgent(BaseAgent):
                 oxy_request, oxy_request.get_query()
             )
         oxy_request.arguments["additional_prompt"] = self.additional_prompt
-        oxy_request.arguments["tools_description"] = "\n\n".join(llm_tool_desc_list)
+        oxy_request.arguments[self.tools_placeholder] = "\n\n".join(llm_tool_desc_list)
 
         return oxy_request
 

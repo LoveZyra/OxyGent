@@ -2,20 +2,19 @@ import logging
 import subprocess
 from typing import List, Optional
 
-from oxygent.oxy import FunctionHub
 from pydantic import Field
+
+from oxygent.oxy import FunctionHub
 
 logger = logging.getLogger(__name__)
 shell_tools = FunctionHub(name="shell_tools")
 
 
-@shell_tools.tool(
-    description="Run a shell command and return the output or error."
-)
+@shell_tools.tool(description="Run a shell command and return the output or error.")
 def run_shell_command(
     args: List[str] = Field(description="command arguments"),
     tail: int = 10,
-    base_dir: Optional[str] = None
+    base_dir: Optional[str] = None,
 ) -> str:
     """Runs a shell command and returns the output or error."""
 
@@ -27,7 +26,7 @@ def run_shell_command(
             encoding="utf8",
             shell=True,
             text=True,
-            cwd=base_dir
+            cwd=base_dir,
         )
         if result.returncode != 0:
             return f"Error: {result.stderr}"

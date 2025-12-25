@@ -282,8 +282,7 @@ class OxyRequest(BaseModel):
             oxy_request.caller_category != "user"
             and oxy.is_permission_required
             and oxy_name
-            not in caller_oxy.permitted_tool_name_list
-            + caller_oxy.extra_permitted_tool_name_list
+            not in caller_oxy.permitted_tool_name_list + caller_oxy.permitted_oxy
         ):
             error_msg = (
                 f"No permission for oxy: {oxy_name}, caller: {oxy_request.caller}"
@@ -304,6 +303,14 @@ class OxyRequest(BaseModel):
             oxy_request.arguments["agent_name"] = caller_oxy.name
             oxy_request.arguments["top_k"] = caller_oxy.top_k_tools
             oxy_request.arguments["vearch_client"] = self.mas.vearch_client
+        system_arg_dict = {
+            "agent_pin": oxy_request.caller,
+            "user_pin": oxy_request.get_group_data("user_pin", ""),
+        }
+        for system_arg in oxy.system_args:
+            if system_arg in oxy_request.arguments:
+                continue
+            oxy_request.arguments[system_arg] = system_arg_dict[system_arg]
         # Execute the oxy
         try:
             oxy_response = await asyncio.wait_for(
@@ -351,6 +358,10 @@ class OxyRequest(BaseModel):
                 output=f"Error executing tool {oxy.name}: {str(e)}",
             )
         # return await self.retry_execute(oxy, oxy_request)
+
+    async def call_async(self, **kwargs):
+        task = asyncio.create_task(self.call(**kwargs))
+        self.mas.background_tasks.add(task)
 
     async def start(self) -> "OxyResponse":
         return await self.get_oxy(self.callee).execute(self)

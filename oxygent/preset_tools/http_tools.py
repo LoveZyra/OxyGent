@@ -1,9 +1,10 @@
-import json
-from typing import Optional, Dict, Any
-from pydantic import Field
-import httpx
-from oxygent.oxy import FunctionHub
 import asyncio
+import json
+from typing import Any, Dict, Optional
+
+import httpx
+
+from oxygent.oxy import FunctionHub
 
 http_tools = FunctionHub(name="http_tools")
 
@@ -12,9 +13,9 @@ http_tools = FunctionHub(name="http_tools")
     description="Make a GET request to a specified URL with optional headers and parameters"
 )
 def http_get(
-        url: str,
-        headers: Optional[Dict[str, str]] = None,
-        params: Optional[Dict[str, Any]] = None,
+    url: str,
+    headers: Optional[Dict[str, str]] = None,
+    params: Optional[Dict[str, Any]] = None,
 ) -> str:
     """
     发送HTTP GET请求
@@ -24,11 +25,14 @@ def http_get(
         with httpx.Client() as client:
             response = client.get(url, headers=headers, params=params)
             response.raise_for_status()
-            return json.dumps({
-                "status_code": response.status_code,
-                "headers": dict(response.headers),
-                "content": response.text
-            }, ensure_ascii=False)
+            return json.dumps(
+                {
+                    "status_code": response.status_code,
+                    "headers": dict(response.headers),
+                    "content": response.text,
+                },
+                ensure_ascii=False,
+            )
     except Exception as e:
         return json.dumps({"error": str(e)}, ensure_ascii=False)
 
@@ -37,9 +41,9 @@ def http_get(
     description="Make a POST request to a specified URL with optional headers and JSON data"
 )
 def http_post(
-        url: str,
-        data: Optional[Dict[str, Any]] = None,
-        headers: Optional[Dict[str, str]] = None,
+    url: str,
+    data: Optional[Dict[str, Any]] = None,
+    headers: Optional[Dict[str, str]] = None,
 ) -> str:
     """
     发送HTTP POST请求
@@ -55,11 +59,14 @@ def http_post(
         with httpx.Client() as client:
             response = client.post(url, json=data, headers=headers)
             response.raise_for_status()
-            return json.dumps({
-                "status_code": response.status_code,
-                "headers": dict(response.headers),
-                "content": response.text
-            }, ensure_ascii=False)
+            return json.dumps(
+                {
+                    "status_code": response.status_code,
+                    "headers": dict(response.headers),
+                    "content": response.text,
+                },
+                ensure_ascii=False,
+            )
     except Exception as e:
         return json.dumps({"error": str(e)}, ensure_ascii=False)
 
@@ -74,5 +81,6 @@ async def main():
     result = await http_post("https://httpbin.org/post", data=data)
     print("POST Result:", result)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     asyncio.run(main())

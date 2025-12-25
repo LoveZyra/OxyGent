@@ -15,17 +15,18 @@ NOTE: This module contains the following parts:
     - agent_organization: Dictionary representing the organization structure of agents
     - lock: Boolean to control task execution flow
 """
-# from __future__ import annotations
 
+# from __future__ import annotations
 import asyncio
 import json
 import os
 import traceback
 from collections import OrderedDict
-from typing import Callable, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import msgpack
 from elasticsearch import AsyncElasticsearch
+from fastapi import APIRouter
 from pydantic import BaseModel, ConfigDict, Field
 
 from .config import Config
@@ -476,7 +477,7 @@ class MAS(BaseModel):
                     agent_organization[-1]["children"] = []
 
                 tool_name_list = []
-                for tool_name in agent.permitted_tool_name_list:
+                for tool_name in agent.permitted_tool_name_list + agent.permitted_oxy:
                     # if not agent.is_sourcing_tools and tool_name == 'retrieve_tools':
                     #     continue
                     tool_name_list.append(tool_name)
@@ -958,9 +959,17 @@ class MAS(BaseModel):
             raise
 
     async def start_web_service(
-        self, first_query=None, welcome_message=None, host=None, port=None
+        self,
+        first_query=None,
+        welcome_message=None,
+        host=None,
+        port=None,
+        routers=None,
+        middlewares=None,
     ):
         """Start the FastAPI + SSE service (see original inline documentation)."""
+        self.routers.extend(routers or [])
+        self.middlewares.extend(middlewares or [])
 
         if not self.master_agent_name:
             logger.warning("No agent was registered.")
@@ -977,9 +986,48 @@ class MAS(BaseModel):
         import importlib.resources
 
         import uvicorn
-        from fastapi import FastAPI, Request
+        from fastapi import APIRouter, FastAPI, Request
+        from fastapi.routing import APIRoute
         from fastapi.staticfiles import StaticFiles
         from sse_starlette.sse import EventSourceResponse
+
+        def get_banks_from_router(router: APIRouter) -> List[Dict[str, Any]]:
+            banks = []
+            for route in router.routes:
+                if isinstance(route, APIRoute) and "bank" in getattr(route, "tags", []):
+                    description = route.description
+                    input_schema = {"type": "object", "properties": {}, "required": []}
+                    for param in (
+                        route.dependant.query_params + route.dependant.body_params
+                    ):
+                        param_type = param.type_
+                        # 类型转换（简单实现）
+                        if param_type is str:
+                            t = "string"
+                        elif param_type is int:
+                            t = "integer"
+                        elif param_type is float:
+                            t = "number"
+                        elif param_type is bool:
+                            t = "boolean"
+                        else:
+                            t = "string"
+                        input_schema["properties"][param.name] = {
+                            "type": t,
+                            "description": param.field_info.description or "",
+                        }
+                        if param.required:
+                            input_schema["required"].append(param.name)
+                    banks.append(
+                        {
+                            "name": route.endpoint.__name__,
+                            "endpoint": route.path,
+                            "methods": route.methods,
+                            "description": description,
+                            "inputSchema": input_schema,
+                        }
+                    )
+            return banks
 
         app = FastAPI()
 
@@ -996,9 +1044,19 @@ class MAS(BaseModel):
         for app_middleware in self.middlewares:
             app.add_middleware(app_middleware)
 
+        banks = []
         app.include_router(router)
         for app_router in self.routers:
             app.include_router(app_router)
+            if isinstance(app_router, BankRouter):
+                app_router.set_mas(self)
+            banks.extend(get_banks_from_router(app_router))
+
+        @app.get("/list_banks")
+        def list_banks():
+            return banks
+
+        app.include_router(router)
 
         web_src = "web"
         with importlib.resources.as_file(
@@ -1301,3 +1359,11 @@ class MAS(BaseModel):
         results = await asyncio.gather(*tasks)
         logger.info("done.")
         return results
+
+
+class BankRouter(APIRouter):
+    def __init__(self, *args, **kwargs):
+        super().__init__(tags=["bank"], *args, **kwargs)
+
+    def set_mas(self, mas: MAS):
+        self.mas = mas

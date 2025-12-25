@@ -7,11 +7,14 @@ function renderFlowchart(agentNodes, containerId) {
             displayName = node.callee || node.node_id;
             nodeType = 'agent';
         } else if (node.node_type === 'llm') {
-            displayName = node.callee || 'qwen32b';
+            displayName = node.callee || 'llm';
             nodeType = 'llm';
         } else if (node.node_type === 'tool') {
             displayName = node.callee || 'tool';
             nodeType = 'tool';
+        } else if (node.node_type === 'bank') {
+            displayName = node.callee || 'bank';
+            nodeType = 'bank';
         } else {
             displayName = node.node_id;
             nodeType = 'agent';
@@ -32,6 +35,8 @@ function renderFlowchart(agentNodes, containerId) {
             preImg = `<img style="padding: 5px;" src="${typeMap.tool}" alt="">`;
         } else if (nodeType === 'llm') {
             preImg = `<img style="padding: 5px;" src="${typeMap.llm}" alt="">`;
+        } else if (nodeType === 'bank') {
+            preImg = `<img style="padding: 5px;" src="${typeMap.bank}" alt="">`;
         } else {
             const idx = agent_id_dict[callee] % 16;
             const cur = agentImgMap[idx];

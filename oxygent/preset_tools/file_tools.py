@@ -33,7 +33,9 @@ def read_file(path: str = Field(description="Path to the file to read")) -> str:
 @file_tools.tool(
     description="Delete a file or directory. Returns a success message if the item is deleted, or an error if the item does not exist. For directories, this will delete all contents recursively."
 )
-def delete_file(path: str = Field(description="Path to the file or directory to delete")) -> str:
+def delete_file(
+    path: str = Field(description="Path to the file or directory to delete"),
+) -> str:
     if not os.path.exists(path):
         return f"Error: The file or directory at {path} does not exist."
 

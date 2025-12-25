@@ -36,7 +36,7 @@ This class defines the core execution lifecycle, permission management,message h
 | `is_permission_required`         | `bool`               | `False`                                    | Whether execution needs permission |
 | `is_save_data`                   | `bool`               | `True`                                     | Persist execution data to store    |
 | `permitted_tool_name_list`       | `list`               | `[]`                                       | Tools the agent/tool may call      |
-| `extra_permitted_tool_name_list` | `list`               | `[]`                                       | Additional tool permissions        |
+| `permitted_oxy`                  | `list`               | `[]`                                       | Additional tool permissions        |
 | `is_send_tool_call`              | `bool`               | `Config.get_message_is_send_tool_call()`   | Send *tool\_call* messages         |
 | `is_send_observation`            | `bool`               | `Config.get_message_is_send_observation()` | Send *observation* messages        |
 | `is_send_answer`                 | `bool`               | `Config.get_message_is_send_answer()`      | Send *answer* messages             |

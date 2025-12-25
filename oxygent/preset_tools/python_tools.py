@@ -7,14 +7,12 @@ logger = logging.getLogger(__name__)
 python_tools = FunctionHub(name="python_tools")
 
 
-@python_tools.tool(
-    description="Runs Python code in the current environment."
-)
+@python_tools.tool(description="Runs Python code in the current environment.")
 def run_python_code(
     code: str,
     variable_to_return: Optional[str] = None,
     safe_globals: Optional[dict] = None,
-    safe_locals: Optional[dict] = None
+    safe_locals: Optional[dict] = None,
 ) -> str:
     try:
         logger.debug(f"Running code:\n\n{code}\n\n")
@@ -29,8 +27,7 @@ def run_python_code(
             variable_value = safe_locals.get(variable_to_return)
             if variable_value is None:
                 return f"Variable {variable_to_return} not found"
-            logger.debug(
-                f"Variable {variable_to_return} value: {variable_value}")
+            logger.debug(f"Variable {variable_to_return} value: {variable_value}")
             return str(variable_value)
         else:
             return "successfully run python code"

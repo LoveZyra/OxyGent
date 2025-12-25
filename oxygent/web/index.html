@@ -574,7 +574,7 @@
                 history["agent_log"] = JSON.parse(JSON.stringify(plan_dict[jm["content"]["callee"]]));
             }
 
-            if (jm["content"]["callee_category"] === 'agent' || jm["content"]["callee_category"] === 'tool') {
+            if (jm["content"]["callee_category"] === 'agent' || jm["content"]["callee_category"] === 'tool' || jm["content"]["callee_category"] === 'bank') {
                 add_tool_call(jm["content"]["call_stack"].slice(1));
                 history["tool_call"] = getNodeColors(get_all_tool_calls());
             }
@@ -672,12 +672,12 @@
                     current_streaming_element = null;
                 }
                 current_streaming_agent = null;
-            } else if (jm["content"]["caller_category"] === 'agent' && ['tool'].includes(jm["content"]["callee_category"])) {
+            } else if (jm["content"]["caller_category"] === 'agent' && ['tool', 'bank', 'memory_bank'].includes(jm["content"]["callee_category"])) {
                 push_plan(jm["content"]["caller"], "observation", jm["content"].output, jm["content"].node_id, jm["content"]["callee"]);
                 history["agent_log"] = JSON.parse(JSON.stringify(plan_dict[jm["content"]["caller"]]));
             }
 
-            if (jm["content"]["callee_category"] === 'agent' || ['tool'].includes(jm["content"]["callee_category"])) {
+            if (jm["content"]["callee_category"] === 'agent' || ['tool', 'bank', 'memory_bank'].includes(jm["content"]["callee_category"])) {
                 remove_tool_call(jm["content"]["call_stack"].slice(1));
                 history["tool_call"] = getNodeColors(get_all_tool_calls());
             }
@@ -722,6 +722,8 @@
                     tool: './image/org_tool.svg',
                     model: './image/org_model.svg',
                     flow: './image/org_flow.svg',
+                    bank: './image/org_knowledge.svg',
+                    memory_bank: './image/org_memory.svg',
                 };
                 const id = encodeList(data.path);
 

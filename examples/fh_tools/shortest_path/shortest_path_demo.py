@@ -1,8 +1,10 @@
 import os
+
+from function_hubs.shortest_path import shortest_path_tools
 from oxygent import MAS, Config, oxy
-from oxygent.shortest_path.shortest_path import shortest_path_tools
 
 Config.set_agent_llm_model("default_llm")
+
 
 def create_optimal_agent():
     return oxy.ReActAgent(
@@ -21,6 +23,8 @@ def create_optimal_agent():
         is_multimodal_supported=False,
         semaphore=2,
     )
+
+
 oxy_space = [
     oxy.HttpLLM(
         name="default_llm",
@@ -38,14 +42,17 @@ oxy_space = [
     oxy.ReActAgent(
         is_master=True,
         name="master_agent",
-        sub_agents=["excel_agent","shortest_path_agent"],
+        sub_agents=["excel_agent", "shortest_path_agent"],
     ),
 ]
+
 
 async def main():
     async with MAS(oxy_space=oxy_space) as mas:
         await mas.start_web_service(first_query="")
 
+
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(main())

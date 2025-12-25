@@ -1,7 +1,7 @@
 from dotenv import load_dotenv
 
 from .config import Config
-from .mas import MAS
+from .mas import MAS, BankRouter
 from .oxy import Oxy
 from .oxy_factory import OxyFactory
 from .schemas import OxyOutput, OxyRequest, OxyResponse, OxyState
@@ -19,6 +19,7 @@ load_dotenv(".env")
 __all__ = [
     "Oxy",
     "MAS",
+    "BankRouter",
     "OxyState",
     "OxyRequest",
     "OxyOutput",

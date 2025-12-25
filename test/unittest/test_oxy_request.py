@@ -34,7 +34,7 @@ class DummyOxy:
         self.category = "tool"
         self.is_permission_required = True
         self.permitted_tool_name_list = []
-        self.extra_permitted_tool_name_list = []
+        self.permitted_oxy = []
         self.timeout = 5
         self.delay = 0.0
         self._succeed = succeed

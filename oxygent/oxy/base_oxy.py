@@ -82,6 +82,7 @@ class Oxy(BaseModel, ABC):
     input_schema: dict[str, Any] = Field(
         default_factory=dict, description="Input schema definition"
     )
+    system_args: list = Field(default_factory=list, description="")
     desc_for_llm: str = Field("", description="Description shown to LLM")
 
     is_entrance: bool = Field(False, description="Whether this is a MAS entry point")
@@ -91,7 +92,7 @@ class Oxy(BaseModel, ABC):
     permitted_tool_name_list: list = Field(
         default_factory=list, description="List of tools this entity can call"
     )
-    extra_permitted_tool_name_list: list = Field(
+    permitted_oxy: list = Field(
         default_factory=list, description="Additional tool permissions"
     )
 
@@ -152,11 +153,18 @@ class Oxy(BaseModel, ABC):
     retries: int = Field(2)
     delay: float = Field(1.0)
 
+    preceding_oxy: Optional[list] = Field(
+        default_factory=list,
+        description="A list of oxy names that must be called before the current oxy.",
+    )
+    preceding_placeholder: str = Field("preceding_text")
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._semaphore: asyncio.Semaphore = asyncio.Semaphore(self.semaphore)
         self._ensure_async_functions()
         self._set_desc_for_llm()
+        self.permitted_oxy.extend(self.preceding_oxy)
 
     def _ensure_async_functions(self):
         """Ensure all function fields are async. Convert sync functions to async if needed."""
@@ -201,7 +209,10 @@ class Oxy(BaseModel, ABC):
         if "properties" in self.input_schema:
             for param_name, param_info in self.input_schema["properties"].items():
                 # Skip system parameters that shouldn't be shown to LLM
-                if param_info.get("description", "No description") == "SystemArg":
+                if param_info.get("description", "No description").startswith(
+                    "SystemArg"
+                ):
+                    self.system_args.append(param_info["description"][10:])
                     continue
                 param_type = param_info.get("type", "string")
                 param_key = "properties" if param_type == "object" else "description"
@@ -409,6 +420,16 @@ class Oxy(BaseModel, ABC):
             )
 
     async def _before_execute(self, oxy_request: OxyRequest) -> OxyRequest:
+        if self.preceding_oxy:
+            arguments = {k: v for k, v in oxy_request.arguments.items()}
+            tasks = [
+                oxy_request.call(callee=oxy_name, arguments=arguments)
+                for oxy_name in self.preceding_oxy
+            ]
+            oxy_responses = await asyncio.gather(*tasks)
+            oxy_request.arguments[self.preceding_placeholder] = "\n".join(
+                [oxy_response.output for oxy_response in oxy_responses]
+            )
         return oxy_request
 
     @abstractmethod

@@ -1,4 +1,4 @@
-from pydantic import Field, fields
+from pydantic import Field
 
 from oxygent.oxy import FunctionHub
 

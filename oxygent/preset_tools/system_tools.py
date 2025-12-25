@@ -1,8 +1,9 @@
+import asyncio
 import json
 import platform
+
 import psutil
-import asyncio
-from pydantic import Field
+
 from oxygent.oxy import FunctionHub
 
 system_tools = FunctionHub(name="system_tools")
@@ -38,7 +39,7 @@ async def get_system_usage() -> str:
     try:
         cpu_percent = psutil.cpu_percent(interval=1)
         memory = psutil.virtual_memory()
-        disk = psutil.disk_usage('/')
+        disk = psutil.disk_usage("/")
 
         usage = {
             "cpu_percent": cpu_percent,
@@ -48,11 +49,12 @@ async def get_system_usage() -> str:
             "disk_total_gb": round(disk.total / (1024**3), 2),
             "disk_used_gb": round(disk.used / (1024**3), 2),
             "disk_free_gb": round(disk.free / (1024**3), 2),
-            "disk_percent": round(disk.used / disk.total * 100, 2)
+            "disk_percent": round(disk.used / disk.total * 100, 2),
         }
         return json.dumps(usage, ensure_ascii=False)
     except Exception as e:
         return json.dumps({"error": str(e)}, ensure_ascii=False)
+
 
 async def main():
     """
@@ -88,7 +90,6 @@ async def main():
                 print(f"  {key}: {value}")
     except json.JSONDecodeError:
         print("无法解析资源使用情况JSON")
-
 
 
 if __name__ == "__main__":
