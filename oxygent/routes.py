@@ -549,19 +549,10 @@ async def update_prompt(prompt_key: str, request: PromptUpdateRequest):
         if not existing:
             raise HTTPException(status_code=404, detail="Prompt not found")
 
-        has_changes = False
-        if request.prompt_content is not None and request.prompt_content != existing.get("prompt_content", ""):
-            has_changes = True
-        if request.description is not None and request.description != existing.get("description", ""):
-            has_changes = True
-        if request.category is not None and request.category != existing.get("category", "custom"):
-            has_changes = True
-        if request.agent_type is not None and request.agent_type != existing.get("agent_type", ""):
-            has_changes = True
-        if request.tags is not None and request.tags != existing.get("tags", []):
-            has_changes = True
-        if request.is_active is not None and request.is_active != existing.get("is_active", True):
-            has_changes = True
+        has_changes = (
+            request.prompt_content is not None
+            and request.prompt_content != existing.get("prompt_content", "")
+        )
 
         if not has_changes:
             return PromptApiResponse(
