@@ -51,11 +51,6 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-
-# ---------------------------------------------------------------------------
-# Helper Functions
-# ---------------------------------------------------------------------------
-
 async def get_es_client():
     """Get Elasticsearch client based on configuration.
 
@@ -71,18 +66,6 @@ async def get_es_client():
         return db_factory.get_instance(JesEs, hosts, user, password)
     else:
         return db_factory.get_instance(LocalEs)
-
-
-def cleanResult(s):
-    s=s.strip()
-    prefix = "```json"
-    suffix = "```"
-    if s.startswith(prefix):
-        s = s[len(prefix):]
-    if s.endswith(suffix):
-        s = s[:-len(suffix)]
-    return s
-
 
 # Basic route to redirect to the web interface
 @router.get("/")
