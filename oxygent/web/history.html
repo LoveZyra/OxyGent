@@ -238,20 +238,27 @@
                 // Build comments display
                 var commentsHtml = '';
                 if (conv.rating_history && conv.rating_history.length > 0) {
-                    var hasComments = conv.rating_history.some(r => r.comment);
+                    var hasComments = conv.rating_history.some(r => r.comment || r.erp);
                     if (hasComments) {
                         commentsHtml = '<div class="conv-comments" style="margin-top:8px;padding:8px;background:#f9fafb;border-radius:4px;border-left:3px solid #3b82f6;">';
-                        commentsHtml += '<div style="font-size:11px;font-weight:600;color:#1f2937;margin-bottom:6px;">💬 User Comments:</div>';
+                        commentsHtml += '<div style="font-size:11px;font-weight:600;color:#1f2937;margin-bottom:6px;">💬 User Feedback:</div>';
 
                         conv.rating_history.forEach(function(rating) {
-                            if (rating.comment) {
+                            if (rating.comment || rating.erp) {
                                 var ratingIcon = rating.rating_type === 'like' ? '👍' : '👎';
                                 var commentTime = rating.create_time ? ` <span style="color:#9ca3af;font-size:10px;">${rating.create_time}</span>` : '';
                                 commentsHtml += `<div style="margin-bottom:4px;font-size:12px;">
-                                    <span style="color:#6b7280;">${ratingIcon}</span>
-                                    <span style="color:#374151;">${escapeHtml(rating.comment)}</span>
-                                    ${commentTime}
-                                </div>`;
+                                    <span style="color:#6b7280;">${ratingIcon}</span>`;
+
+                                if (rating.comment) {
+                                    commentsHtml += `<span style="color:#374151;">${escapeHtml(rating.comment)}</span>`;
+                                }
+
+                                if (rating.erp) {
+                                    commentsHtml += `<span style="color:#6b7280;margin-left:4px;">| ERP: <span style="color:#374151;font-weight:500;">${escapeHtml(rating.erp)}</span></span>`;
+                                }
+
+                                commentsHtml += commentTime + `</div>`;
                             }
                         });
 
