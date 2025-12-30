@@ -148,10 +148,14 @@ class Oxy(BaseModel, ABC):
     friendly_error_text: Optional[str] = Field(
         None, description="User-friendly error message"
     )
-    semaphore: int = Field(16, description="Concurrency limit")
-    timeout: float = Field(3600, description="Timeout in seconds.")
-    retries: int = Field(2)
-    delay: float = Field(1.0)
+    semaphore: int = Field(
+        default_factory=Config.get_oxy_semaphore, description="Concurrency limit"
+    )
+    timeout: float = Field(
+        default_factory=Config.get_oxy_timeout, description="Timeout in seconds."
+    )
+    retries: int = Field(default_factory=Config.get_oxy_retries)
+    delay: float = Field(default_factory=Config.get_oxy_delay)
 
     preceding_oxy: Optional[list] = Field(
         default_factory=list,

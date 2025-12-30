@@ -32,7 +32,7 @@ class LocalLLM(BaseLLM):
         self._tokenizer = AutoTokenizer.from_pretrained(self.model_path)
 
     async def _execute(self, oxy_request: OxyRequest) -> OxyResponse:
-        payload = Config.get_llm_config()
+        payload = Config.get_llm_config(exclude=["semaphore", "timeout"])
         for k, v in self.llm_params.items():
             payload[k] = v
         for k, v in oxy_request.arguments.items():

@@ -244,17 +244,17 @@
 
                         conv.rating_history.forEach(function(rating) {
                             if (rating.comment || rating.erp) {
-                                var ratingIcon = rating.rating_type === 'like' ? '👍' : '👎';
+                                var ratingIcon = rating.rating_type === 'like' ? '👍 ' : '👎 ';
                                 var commentTime = rating.create_time ? ` <span style="color:#9ca3af;font-size:10px;">${rating.create_time}</span>` : '';
                                 commentsHtml += `<div style="margin-bottom:4px;font-size:12px;">
                                     <span style="color:#6b7280;">${ratingIcon}</span>`;
 
-                                if (rating.comment) {
-                                    commentsHtml += `<span style="color:#374151;">${escapeHtml(rating.comment)}</span>`;
+                                if (rating.erp) {
+                                    commentsHtml += `<span style="color:#6b7280;margin-left:4px;">ERP<span style="color:#374151;font-weight:500;">[${escapeHtml(rating.erp)}]</span></span>`;
                                 }
 
-                                if (rating.erp) {
-                                    commentsHtml += `<span style="color:#6b7280;margin-left:4px;">| ERP: <span style="color:#374151;font-weight:500;">${escapeHtml(rating.erp)}</span></span>`;
+                                if (rating.comment) {
+                                    commentsHtml += `<span style="color:#374151;">: ${escapeHtml(rating.comment)}</span>`;
                                 }
 
                                 commentsHtml += commentTime + `</div>`;
@@ -446,7 +446,8 @@
     }
     
     function openConversation(traceId) {
-        window.location.href = `./node.html?id=${traceId}`;
+        // window.location.href = `./node.html?id=${traceId}`;
+        window.open(`./node.html?id=${traceId}`, '_blank');
     }
     
     function formatDate(dateString) {

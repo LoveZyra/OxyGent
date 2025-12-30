@@ -48,7 +48,12 @@ class BaseLLM(Oxy):
     """
 
     category: str = Field("llm", description="")
-    timeout: float = Field(300, description="Timeout in seconds.")
+    semaphore: int = Field(
+        default_factory=Config.get_llm_semaphore, description="Concurrency limit"
+    )
+    timeout: float = Field(
+        default_factory=Config.get_llm_timeout, description="Timeout in seconds."
+    )
 
     llm_params: dict = Field(default_factory=dict)
     is_send_think: bool = Field(

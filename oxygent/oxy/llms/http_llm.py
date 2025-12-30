@@ -82,7 +82,7 @@ class HttpLLM(RemoteLLM):
                 "model": self.model_name,
                 "stream": True,
             }
-            payload.update(Config.get_llm_config())
+            payload.update(Config.get_llm_config(exclude=["semaphore", "timeout"]))
             for k, v in self.llm_params.items():
                 payload[k] = v
             for k, v in oxy_request.arguments.items():

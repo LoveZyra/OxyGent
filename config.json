@@ -18,9 +18,11 @@
             "is_detailed_observation": true
         },
         "llm": {
-            "temperature": 0.1, 
-            "max_tokens": 4096, 
-            "top_p": 1
+            "temperature": 0.1,
+            "max_tokens": 4096,
+            "top_p": 1,
+            "semaphore": 16,
+            "timeout": 300
         },
         "cache": {
             "save_dir": "./cache_dir"
@@ -58,17 +60,27 @@
             "log_level": "INFO",
             "workers": 1
         },
+        "oxy": {
+            "semaphore": 1024,
+            "timeout": 3600,
+            "retries": 2,
+            "delay": 1.0
+        },
         "agent": {
             "prompt": "",
             "llm_model": "default_llm",
             "input_schema": {
                 "properties": {"query": {"description": "Query question"}},
                 "required": ["query"]
-            }
+            },
+            "short_memory_size": 10,
+            "welcome_message": "Hi, I’m OxyGent. How can I assist you?"
         },
         "tool": {
-            "mcp_is_keep_alive": true, 
-            "is_concurrent_init": true
+            "mcp_is_keep_alive": true,
+            "is_concurrent_init": true,
+            "semaphore": 1024,
+            "timeout": 60
         }
     },
     "dev": {

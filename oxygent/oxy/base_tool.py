@@ -7,6 +7,7 @@ permissions and have shorter timeout periods.
 
 from pydantic import Field
 
+from ..config import Config
 from ..schemas import OxyRequest, OxyResponse
 from .base_oxy import Oxy
 
@@ -25,7 +26,12 @@ class BaseTool(Oxy):
         True, description="Whether permission is required for execution"
     )
     category: str = Field("tool", description="Tool category identifier")
-    timeout: float = Field(60, description="Timeout in seconds.")
+    semaphore: int = Field(
+        default_factory=Config.get_tool_semaphore, description="Concurrency limit"
+    )
+    timeout: float = Field(
+        default_factory=Config.get_tool_timeout, description="Timeout in seconds."
+    )
 
     async def _execute(self, oxy_request: OxyRequest) -> OxyResponse:
         raise NotImplementedError("This method is not yet implemented")
