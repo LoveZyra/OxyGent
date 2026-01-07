@@ -1139,9 +1139,9 @@ async def get_history_with_ratings(
                 "bool": {
                     "should": [
                         {"term": {"trace_id": search_term}},
-                        {"wildcard": {"input": f"*{search_term}*"}},
-                        {"wildcard": {"callee": f"*{search_term}*"}},
-                        {"wildcard": {"output": f"*{search_term}*"}}
+                        {"match": {"input": search_term}},
+                        {"match": {"callee": search_term}},
+                        {"match": {"output": search_term}}
                     ],
                     "minimum_should_match": 1
                 }
@@ -1173,7 +1173,7 @@ async def get_history_with_ratings(
 
         # Build groups metadata from traces
         trace_hits = traces_response.get("hits", {}).get("hits", [])
-        logger.info(f"Retrieved {len(trace_hits)} traces from database")
+        logger.debug(f"Retrieved {len(trace_hits)} traces from database")
 
         # Group traces by group_id
         groups_metadata_dict = {}
@@ -1208,7 +1208,7 @@ async def get_history_with_ratings(
                 continue
 
         groups_metadata = list(groups_metadata_dict.values())
-        logger.info(f"Built metadata for {len(groups_metadata)} groups")
+        logger.debug(f"Built metadata for {len(groups_metadata)} groups")
         all_trace_ids = []
         for metadata in groups_metadata:
             all_trace_ids.extend(metadata["trace_ids"])
@@ -1225,7 +1225,7 @@ async def get_history_with_ratings(
                 }
             ).to_dict()
 
-        logger.info(f"Loading ratings for {len(all_trace_ids)} traces")
+        logger.debug(f"Loading ratings for {len(all_trace_ids)} traces")
         ratings_map = await evaluation_manager.get_ratings_for_traces(all_trace_ids)
 
         # Calculate rating stats per group

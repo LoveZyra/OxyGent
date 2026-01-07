@@ -103,7 +103,7 @@ class EvaluationManager:
                 return self.db_factory.get_instance(JesEs, hosts, user, password)
 
         # Fallback to LocalEs if JesEs is not properly configured
-        logger.info(
+        logger.debug(
             "JesEs config not found or incomplete, using LocalEs for evaluation_manager"
         )
         return self.db_factory.get_instance(LocalEs)
