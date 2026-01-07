@@ -1116,66 +1116,120 @@ async def setup_rating_indices():
 async def get_history_with_ratings(
     page: int = 1,
     page_size: int = 20,
-    rating_filter: str = "all"  # "all", "liked", "disliked", "unrated"
+    rating_filter: str = "all",
+    search_term: str = ""
 ):
-    """Get conversation history list with rating information, aggregated and displayed by group_id.
-
-    Optimized version: Only fetches rating data for the current page instead of all records.
-
+    """Optimized version: Get conversation history with ratings.
     Args:
         page: Page number (starts from 1)
         page_size: Number of items per page
-        rating_filter: Rating filter condition - "all"(all), "liked"(liked), "disliked"(disliked), "unrated"(unrated)
+        rating_filter: Rating filter - "all", "liked", "disliked", "unrated"
+        search_term: Search term for filtering
 
     Returns:
-        dict: WebResponse wrapped list of conversation groups, aggregated by group_id with rating statistics
+        dict: WebResponse with conversation groups
     """
     try:
         es_client = await get_es_client()
 
-        # Phase 1: Quick aggregation to get group metadata only
-        # Query all traces but only get minimal fields for grouping
-        all_traces_response = await es_client.search(
-            Config.get_app_name() + "_trace",
-            {
-                "query": {"match_all": {}},
-                "_source": ["trace_id", "group_id", "create_time"],  # Only fetch essential fields
-                "size": 10000,
-                "sort": [{"create_time": {"order": "desc"}}],
-            },
-        )
-
-        # Build lightweight group metadata
-        groups_metadata = {}
-        trace_to_group_map = {}
-
-        for hit in all_traces_response["hits"]["hits"]:
-            source = hit["_source"]
-            trace_id = source.get("trace_id", "")
-            group_id = source.get("group_id", trace_id)
-            create_time = source.get("create_time", "")
-
-            trace_to_group_map[trace_id] = group_id
-
-            if group_id not in groups_metadata:
-                groups_metadata[group_id] = {
-                    "group_id": group_id,
-                    "trace_ids": [],
-                    "latest_create_time": create_time,
+        # Build search query
+        search_query = {"match_all": {}}
+        if search_term and search_term.strip():
+            search_query = {
+                "bool": {
+                    "should": [
+                        {"term": {"trace_id": search_term}},
+                        {"wildcard": {"input": f"*{search_term}*"}},
+                        {"wildcard": {"callee": f"*{search_term}*"}},
+                        {"wildcard": {"output": f"*{search_term}*"}}
+                    ],
+                    "minimum_should_match": 1
                 }
+            }
 
-            groups_metadata[group_id]["trace_ids"].append(trace_id)
-            if create_time > groups_metadata[group_id]["latest_create_time"]:
-                groups_metadata[group_id]["latest_create_time"] = create_time
+        # Calculate how many traces we need to fetch
+        # Fetch more than page_size to account for grouping
+        fetch_size = page_size * 10  # Fetch 10x page size for grouping
 
-        # Get all trace_ids for rating lookup
-        all_trace_ids = list(trace_to_group_map.keys())
+        logger.info(f"Fetching history: page={page}, page_size={page_size}, fetch_size={fetch_size}, rating_filter={rating_filter}, search_term={search_term}")
 
-        # Batch retrieve rating statistics for ALL traces (still needed for filtering)
+        # Fetch traces with minimal fields for grouping
+        try:
+            traces_response = await es_client.search(
+                Config.get_app_name() + "_trace",
+                {
+                    "query": search_query,
+                    "_source": ["trace_id", "group_id", "create_time"],  # Only fetch necessary fields
+                    "size": fetch_size,
+                    "sort": [{"create_time": {"order": "desc"}}],
+                }
+            )
+        except Exception as es_error:
+            logger.error(f"Elasticsearch search error: {es_error}")
+            return WebResponse(
+                code=500,
+                message=f"Database query failed: {str(es_error)}"
+            ).to_dict()
+
+        # Build groups metadata from traces
+        trace_hits = traces_response.get("hits", {}).get("hits", [])
+        logger.info(f"Retrieved {len(trace_hits)} traces from database")
+
+        # Group traces by group_id
+        groups_metadata_dict = {}
+        for hit in trace_hits:
+            try:
+                source = hit.get("_source", {})
+                trace_id = source.get("trace_id", "")
+                group_id = source.get("group_id", trace_id)  # Use trace_id as fallback
+                create_time = source.get("create_time", "")
+
+                if not trace_id:
+                    continue
+
+                if group_id not in groups_metadata_dict:
+                    groups_metadata_dict[group_id] = {
+                        "group_id": group_id,
+                        "trace_ids": [],
+                        "latest_create_time": create_time,
+                        "total_likes": 0,
+                        "total_dislikes": 0,
+                        "has_rating": False
+                    }
+
+                groups_metadata_dict[group_id]["trace_ids"].append(trace_id)
+
+                # Update latest_create_time if this trace is newer
+                if create_time > groups_metadata_dict[group_id]["latest_create_time"]:
+                    groups_metadata_dict[group_id]["latest_create_time"] = create_time
+
+            except Exception as hit_error:
+                logger.warning(f"Error processing trace hit: {hit_error}")
+                continue
+
+        groups_metadata = list(groups_metadata_dict.values())
+        logger.info(f"Built metadata for {len(groups_metadata)} groups")
+        all_trace_ids = []
+        for metadata in groups_metadata:
+            all_trace_ids.extend(metadata["trace_ids"])
+
+        if not all_trace_ids:
+            logger.warning("No trace_ids found, returning empty result")
+            return WebResponse(
+                data={
+                    "conversation_groups": [],
+                    "total": 0,
+                    "page": page,
+                    "page_size": page_size,
+                    "total_pages": 0,
+                }
+            ).to_dict()
+
+        logger.info(f"Loading ratings for {len(all_trace_ids)} traces")
         ratings_map = await evaluation_manager.get_ratings_for_traces(all_trace_ids)
 
-        # Calculate aggregated rating stats per group
-        for group_id, metadata in groups_metadata.items():
+        # Calculate rating stats per group
+        for metadata in groups_metadata:
             total_likes = 0
             total_dislikes = 0
             has_rating = False
@@ -1192,9 +1246,9 @@ async def get_history_with_ratings(
             metadata["total_dislikes"] = total_dislikes
             metadata["has_rating"] = has_rating
 
-        # Filter groups based on rating criteria
+        # Filter by rating criteria
         filtered_groups_metadata = []
-        for group_id, metadata in groups_metadata.items():
+        for metadata in groups_metadata:
             if rating_filter == "all":
                 filtered_groups_metadata.append(metadata)
             elif rating_filter == "liked" and metadata["total_likes"] > 0:
@@ -1207,37 +1261,35 @@ async def get_history_with_ratings(
         # Sort by latest time
         filtered_groups_metadata.sort(key=lambda x: x["latest_create_time"], reverse=True)
 
-        # Pagination on metadata level
+        # Pagination
         total_groups = len(filtered_groups_metadata)
         from_index = (page - 1) * page_size
         to_index = from_index + page_size
         page_groups_metadata = filtered_groups_metadata[from_index:to_index]
 
-        # Phase 2: Only fetch full conversation details for current page
+        # Fetch full details only for current page
         page_trace_ids = []
         for metadata in page_groups_metadata:
             page_trace_ids.extend(metadata["trace_ids"])
 
-        # Fetch full trace details only for current page
         page_traces_response = await es_client.search(
             Config.get_app_name() + "_trace",
             {
                 "query": {"terms": {"trace_id": page_trace_ids}},
                 "size": len(page_trace_ids),
+                "_source": ["trace_id", "input", "callee", "output", "create_time", "from_trace_id", "group_id"]
             },
         )
 
-        # Build trace details map
         trace_details_map = {}
         for hit in page_traces_response["hits"]["hits"]:
             source = hit["_source"]
             trace_id = source.get("trace_id", "")
             trace_details_map[trace_id] = source
 
-        # Fetch rating history only for current page
         rating_histories_map = await evaluation_manager.get_rating_histories_for_traces(page_trace_ids)
 
-        # Build final response for current page
+        # Build response
         conversation_groups = []
         for metadata in page_groups_metadata:
             group_id = metadata["group_id"]
@@ -1266,9 +1318,8 @@ async def get_history_with_ratings(
                     rating_stats=rating_stats,
                     rating_history=rating_history
                 )
-                conversations.append(conversation_with_rating.dict())
+                conversations.append(conversation_with_rating.model_dump())
 
-            # Sort conversations by create_time
             conversations.sort(key=lambda x: x["create_time"])
 
             conversation_groups.append({
@@ -1292,6 +1343,7 @@ async def get_history_with_ratings(
         ).to_dict()
 
     except Exception as e:
+        import traceback
         error_msg = traceback.format_exc()
         logger.error(f"Get history with ratings error: {error_msg}")
         return WebResponse(code=500, message="Failed to get conversation history").to_dict()

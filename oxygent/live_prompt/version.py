@@ -155,7 +155,7 @@ class VersionSyncCoordinator:
     async def _check_es_versions(self):
         """Check ES for version updates and update local cache if needed."""
         try:
-            # Get all prompts from ES (lightweight query)
+            # Get all prompts from ES
             search_body = {
                 "query": {"match_all": {}},
                 "size": 1000,
@@ -256,7 +256,7 @@ class VersionSyncCoordinator:
                         self._local_versions[prompt_key] = new_version
 
                         logger.debug(
-                            f"✓ Cache updated for {prompt_key} from ES "
+                            f"Cache updated for {prompt_key} from ES "
                             f"(version {new_version}, attempt {attempt + 1}/{max_retries})"
                         )
 
