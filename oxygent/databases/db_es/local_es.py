@@ -178,6 +178,12 @@ class LocalEs(BaseEs):
         docs = self._build_docs(data)
         docs = self._filter_docs(docs, body.get("query", {}))
         docs = self._sort_docs(docs, body.get("sort", []))
+
+        # Apply _source filtering if specified
+        source_fields = body.get("_source")
+        if source_fields and isinstance(source_fields, list):
+            docs = self._apply_source_filtering(docs, source_fields)
+
         return {"hits": {"hits": docs[: body.get("size", 10)]}}
 
     # ------------------------------------------------------------------
@@ -187,6 +193,20 @@ class LocalEs(BaseEs):
     @staticmethod
     def _build_docs(data: dict[str, Any]):
         return [{"_id": k, "_source": v} for k, v in data.items()]
+
+    @staticmethod
+    def _apply_source_filtering(docs: list[dict[str, Any]], source_fields: list[str]):
+        """Filter _source fields to only include specified fields."""
+        filtered_docs = []
+        for doc in docs:
+            filtered_doc = doc.copy()
+            filtered_source = {}
+            for field in source_fields:
+                if field in doc["_source"]:
+                    filtered_source[field] = doc["_source"][field]
+            filtered_doc["_source"] = filtered_source
+            filtered_docs.append(filtered_doc)
+        return filtered_docs
 
     def _filter_docs(self, docs: list[dict[str, Any]], query: dict[str, Any]):
         if not query:
@@ -276,6 +296,16 @@ class LocalEs(BaseEs):
         if "terms" in condition:
             k, vlist = next(iter(condition["terms"].items()))
             return doc["_source"].get(k) in vlist
+
+        if "match" in condition:
+            # match 查询：实现为简单的子字符串匹配（不区分大小写）
+            k, v = next(iter(condition["match"].items()))
+            if k == "_id":
+                field_value = str(doc["_id"])
+            else:
+                field_value = str(doc["_source"].get(k, ""))
+            # 不区分大小写的子字符串匹配
+            return v.lower() in field_value.lower()
 
         return False
 
