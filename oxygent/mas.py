@@ -1374,12 +1374,6 @@ class MAS(BaseModel):
             if intercepted_response is not None:
                 return intercepted_response
 
-            # Extract _addition_args if present and add to group_data
-            if "_addition_args" in payload:
-                if "group_data" not in payload:
-                    payload["group_data"] = {}
-                payload["group_data"]["_addition_args"] = payload.pop("_addition_args")
-
             current_trace_id = payload["current_trace_id"]
 
             logger.info(
