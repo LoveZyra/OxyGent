@@ -9,8 +9,8 @@ router = APIRouter(tags=["bank"])
 @router.post("/user_profile_retrieve", description="A tool for querying user profile")
 def user_profile_retrieve(
     query: str = Body(description="query"),
-    user_pin: str = Body(description="SystemArg.agent_pin"),
-    agent_pin: str = Body(description="SystemArg.user_pin"),
+    user_pin: str = Body(description="SystemArg.user_pin"),
+    agent_pin: str = Body(description="SystemArg.agent_pin"),
 ):
     user_profile_dict = {
         "001": "Arlen, a student, likes music",
@@ -23,8 +23,8 @@ def user_profile_retrieve(
 @router.post("/user_profile_deposit", description="A tool for updating user profile")
 def user_profile_deposit(
     content: str = Body(description="content"),
-    user_pin: str = Body(description="SystemArg.agent_pin"),
-    agent_pin: str = Body(description="SystemArg.user_pin"),
+    user_pin: str = Body(description="SystemArg.user_pin"),
+    agent_pin: str = Body(description="SystemArg.agent_pin"),
 ) -> str:
     print(agent_pin, user_pin, content)
     return "updated user_profile"

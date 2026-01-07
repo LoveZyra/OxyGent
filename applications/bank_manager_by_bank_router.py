@@ -19,8 +19,8 @@ user_profile_dict = {
 @router.post("/user_profile_retrieve", description="A tool for querying user profile")
 def user_profile_retrieve(
     query: str = Body(description="query"),
-    user_pin: str = Body(description="SystemArg.agent_pin"),
-    agent_pin: str = Body(description="SystemArg.user_pin"),
+    user_pin: str = Body(description="SystemArg.user_pin"),
+    agent_pin: str = Body(description="SystemArg.agent_pin"),
 ):
     global user_profile_dict
     portrait = user_profile_dict.get(user_pin, "Nothing")
@@ -30,8 +30,8 @@ def user_profile_retrieve(
 @router.post("/user_profile_deposit", description="A tool for updating user profile")
 async def user_profile_deposit(
     content: str = Body(description="content"),
-    user_pin: str = Body(description="SystemArg.agent_pin"),
-    agent_pin: str = Body(description="SystemArg.user_pin"),
+    user_pin: str = Body(description="SystemArg.user_pin"),
+    agent_pin: str = Body(description="SystemArg.agent_pin"),
 ):
     global user_profile_dict
     output = await router.mas.call(
