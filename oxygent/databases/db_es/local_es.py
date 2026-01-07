@@ -298,13 +298,11 @@ class LocalEs(BaseEs):
             return doc["_source"].get(k) in vlist
 
         if "match" in condition:
-            # match 查询：实现为简单的子字符串匹配（不区分大小写）
             k, v = next(iter(condition["match"].items()))
             if k == "_id":
                 field_value = str(doc["_id"])
             else:
                 field_value = str(doc["_source"].get(k, ""))
-            # 不区分大小写的子字符串匹配
             return v.lower() in field_value.lower()
 
         return False
