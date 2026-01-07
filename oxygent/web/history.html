@@ -28,8 +28,13 @@
     <div class="history-content">
         <div class="search-bar">
             <div class="search-input-container">
-                <input type="text" id="searchInput" placeholder="Search conversations..." onkeyup="searchConversations()">
-                <img src="./image/group-vector-default.svg" alt="Search" class="search-icon">
+                <input type="text" id="searchInput" placeholder="Search conversations..." onkeypress="handleSearchKeyPress(event)" oninput="toggleClearButton()">
+                <button class="clear-search-button" id="clearSearchBtn" onclick="clearSearch()" style="display: none;" title="Clear search">
+                    ✕
+                </button>
+                <button class="search-button" onclick="searchConversations()" title="Search">
+                    Search
+                </button>
             </div>
             <div class="filter-container">
                 <select id="ratingFilter" onchange="filterConversations()" class="filter-select">
@@ -58,13 +63,16 @@
     var allConversationGroups = [];
     var filteredConversationGroups = [];
     var currentRatingFilter = "all";  // Current filter state
-    
+    var currentSearchTerm = "";  // Current search term
+
     $(document).ready(function() {
         // Set initial value for filter dropdown
         $("#ratingFilter").val(currentRatingFilter);
+        // Initialize clear button state
+        toggleClearButton();
         loadConversations();
     });
-    
+
     function loadConversations() {
         $.ajax({
             type: "GET",
@@ -72,7 +80,8 @@
             data: {
                 page: currentPage,
                 page_size: pageSize,
-                rating_filter: currentRatingFilter  // Send filter parameter
+                rating_filter: currentRatingFilter,  // Send filter parameter
+                search_term: currentSearchTerm  // Send search parameter
             },
             success: function(response) {
                 // Compatible with both code 0 and 200
@@ -414,23 +423,36 @@
     }
     
     function searchConversations() {
-        var searchTerm = $("#searchInput").val().toLowerCase();
+        // Update search term and reload data from backend
+        currentSearchTerm = $("#searchInput").val();
+        currentPage = 1;  // Reset to first page when searching
+        loadConversations();
+    }
 
-        if (searchTerm === "") {
-            filteredConversationGroups = allConversationGroups;
-        } else {
-            filteredConversationGroups = allConversationGroups.filter(function(group) {
-                // Search within all conversations in the group
-                return group.conversations.some(function(conv) {
-                    return (conv.input && conv.input.toLowerCase().includes(searchTerm)) ||
-                           (conv.output && conv.output.toLowerCase().includes(searchTerm)) ||
-                           (conv.trace_id && conv.trace_id.toLowerCase().includes(searchTerm)) ||
-                           (conv.callee && conv.callee.toLowerCase().includes(searchTerm));
-                });
-            });
+    function handleSearchKeyPress(event) {
+        // Trigger search when Enter key is pressed
+        if (event.key === "Enter" || event.keyCode === 13) {
+            searchConversations();
         }
+    }
 
-        renderConversationGroups(filteredConversationGroups);
+    function toggleClearButton() {
+        // Show clear button when there is input, hide when empty
+        var searchValue = $("#searchInput").val();
+        if (searchValue && searchValue.trim().length > 0) {
+            $("#clearSearchBtn").show();
+        } else {
+            $("#clearSearchBtn").hide();
+        }
+    }
+
+    function clearSearch() {
+        // Clear search input and reload data
+        $("#searchInput").val("");
+        currentSearchTerm = "";
+        $("#clearSearchBtn").hide();
+        currentPage = 1;
+        loadConversations();
     }
 
     function filterConversations() {
@@ -439,10 +461,13 @@
 
         // Reset to first page and reload data
         currentPage = 1;
-        loadConversations();
 
-        // Clear search box
+        // Clear search box and search term
         $("#searchInput").val("");
+        currentSearchTerm = "";
+        $("#clearSearchBtn").hide();
+
+        loadConversations();
     }
     
     function openConversation(traceId) {
